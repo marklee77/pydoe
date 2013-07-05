@@ -35,6 +35,7 @@ def main(argv=None):
                            for r in open(arrayfile, 'r')])
 
     paramsets = config.get('params', [])
+    commands  = config.get('commands', [])
 
     if len(paramsets) != len(oas):
         raise SystemExit("must specify an array file for every paramset.")
@@ -51,14 +52,17 @@ def main(argv=None):
             maxval = (num_symbols / num_values) * num_values
             cval = cycle(pvalues)
             
-            selection.append([pvalues[idx % num_values] 
+            selection.append([(param, pvalues[idx % num_values])
                              if idx < maxval else next(cval) for idx in col])
         selections.append(zip(*selection))
 
     #plan = reduce(lambda x, y: [chain(*z) for z in product(x, y)], selections)
-    plan = reduce(lambda x, y: [list(w)+list(v) for w in x for v in y], selections)
+    plan = [dict(row) for row in reduce(lambda x, y: [list(w)+list(v) for w in x for v in y], selections)]
+
     for row in plan:
-        print list(row)
+        for command in commands: 
+            print command % row
+    
 
 if __name__ == "__main__":
     main()
