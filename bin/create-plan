@@ -3,7 +3,7 @@
 def main(argv=None):
     from argparse import ArgumentParser
     from os.path import isfile
-    from itertools import cycle, product 
+    from itertools import chain, cycle, product 
     from sys import exit
 
     from yaml import load as yload
@@ -55,8 +55,10 @@ def main(argv=None):
                              if idx < maxval else next(cval) for idx in col])
         selections.append(zip(*selection))
 
-    for selection in selections:
-        print selection
+    #plan = reduce(lambda x, y: [chain(*z) for z in product(x, y)], selections)
+    plan = reduce(lambda x, y: [list(w)+list(v) for w in x for v in y], selections)
+    for row in plan:
+        print list(row)
 
 if __name__ == "__main__":
     main()
