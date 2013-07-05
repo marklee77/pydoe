@@ -1,0 +1,66 @@
+#!/usr/bin/env python
+
+# FIXME: paramset to paramlist?
+
+def main(argv=None):
+    from argparse import ArgumentParser
+    from os.path import isfile
+    from itertools import cycle, product 
+    from sys import exit
+
+    from yaml import load as yload
+
+    argparser = ArgumentParser(description='run vector packing experiment')
+    argparser.add_argument('-c', '--config',
+                           help='experiment configuration file')
+
+    argparser.add_argument('-a', '--array', default=[], action='append',
+                           help='input file containing orthogonal array')
+    
+    argparser.add_argument('-s', '--seed', type=int, default=0,
+                           help='initial random seed value')
+
+    args = argparser.parse_args()
+
+    if not args.config or not isfile(args.config):
+        raise SystemExit("configuration file required to run experiment.")
+    
+    config = yload(open(args.config, 'r'))
+
+    oas = []
+
+    for arrayfile in args.array:
+        if not isfile(arrayfile):
+            raise SystemExit("not a valid array file: %s", arrayfile)
+
+        oas.append([[int(x) for x in r.split()] 
+                           for r in open(arrayfile, 'r')])
+
+    paramsets = config.get('paramsets', [])
+
+    if len(paramsets) != len(oas):
+        raise SystemExit("must specify an array file for every paramset.")
+
+    pmatrices = []
+    for paramset, oa in zip(paramsets, oas):
+        pmatrix = []
+        for param, col in zip(paramset.values(), zip(*oa)):
+            num_values = len(param)
+            num_symbols = len(set(col))
+            if num_values > num_symbols:
+                raise SystemExit("The number of parameter values exceeds the " +
+                                 "number of symbols available")
+            maxval = (num_symbols / num_values) * num_values
+            cval = cycle(param)
+            
+            pmatrix.append([param[x % num_values] if x < maxval else next(cval) 
+                           for x in col])
+        pmatrices.append(zip(*pmatrix))
+
+    for pmatrix in pmatrices:
+        for row in pmatrix:
+            print(row)
+
+if __name__ == "__main__":
+    main()
+ 
