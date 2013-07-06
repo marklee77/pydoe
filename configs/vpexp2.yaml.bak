@@ -1,0 +1,60 @@
+constants:
+    probdir: data/probsets/oatest3
+    resultdir: data/results/oatest3
+    num_bins: 800
+
+paramsets:
+    problems:
+        array: file:oa.25.6.5.2.txt
+        params:
+            num_items:
+                values: [ 1200, 1400, 1600, 1800, 2000 ]
+
+            num_dims:
+                values: [ 1, 2, 4, 6, 8]
+               
+            slack:
+                values: [ 0.1, 0.3, 0.5, 0.7, 0.9 ]
+
+            cov:
+                values: [ 0.00, 0.25, 0.50, 0.75, 1.00 ]
+
+    algorithms:
+        array: full-factorial
+        params:
+            pack:
+                values: [ 'pack_by_items', 'pack_by_bins' ]
+
+            select:
+                values: [ 'none', 'a:sum', 'd:sum', 'a:max', 'd:max', 
+                          'a:maxdiff', 'd:maxdiff', 'a:maxratio', 'd:maxratio', 
+                          'a:lnorm', 'd:lnorm', 
+                          'pp:w=1', 'pp:w=2', 'cp:w=1', 'cp:w=2' ]
+
+            isort:
+                values: [ 'none', 'a:sum', 'd:sum', 'a:max', 'd:max', 
+                          'a:maxdiff', 'd:maxdiff', 'a:maxratio', 'd:maxratio', 
+                          'a:lnorm', 'd:lnorm' ]
+
+            bsort:
+                values: [ 'none', 'a:sum', 'd:sum', 'a:max', 'd:max', 
+                          'a:maxdiff', 'd:maxdiff', 'a:maxratio', 'd:maxratio', 
+                          'a:lnorm', 'd:lnorm' ]
+
+variables:
+    - name: 'probfile'
+      paramsets: [ 'problems' ]
+      value: prob-seed:%(index)s-num_bins:%s(num_bins)s-num_items:%(num_items)s-num_dims:%(num_dims)s-cov:%(cov)s-slack:%(slack)s.prob
+
+    - name: 'resultfile'
+      paramsets: [ 'problems', 'algorithms' ]
+      value: prob-seed:%(index)s-num_bins:%s(num_bins)s-num_items:%(num_items)s-num_dims:%(num_dims)s-cov:%(cov)s-slack:%(slack)s-pack:%(pack)s-select%(select)s-isort:%(isort)s-bsort:%(bsort).result
+        
+commandsets:
+    - paramsets: [ 'problems' ]
+      commands:
+        - generate-vectorpack-problem -s %(index)s -b %(num_bins)s -i %(num_items)s -d %(num_dims)s -c %(cov)s -k %(slack)s > %(probdir)s/%(probfile)s
+    - paramsets: [ 'problems', 'algorithms' ]
+      commands:
+        - pack-vectors -P %(pack)s -S %(select)s -I %(isort)s -B %(bsort)s > %(resultdir)s/%(resultfile)s
+

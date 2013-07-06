@@ -1,0 +1,42 @@
+paramsets:
+    - name: fits
+      array: full-factorial
+      params:
+        - name: pack
+          col: 0
+          values: [ 'best_fit_by_items', 'best_fit_by_bins' ]
+
+    - name: other
+      aray: file:oa.121.12.11.2.txt
+      params:
+        select:
+          col: 0
+          values: [ 'asum', 'dsum', 'amax', 'dmax', 'amaxdiff', 'dmaxdiff', 
+                    'amaxratio', 'dmaxratio', 'al2', 'dl2', 'pp' ]
+        isort:
+          col: 1
+          values: [ 'none', 'a:sum', 'd:sum', 'a:max', 'd:max', 'a:maxdiff',
+                    'd:maxdiff', 'a:maxratio', 'd:maxratio', 'a:lnorm', 'd:lnorm' ]
+        bsort:
+          col: 2
+          values: [ 'none', 'a:sum', 'd:sum', 'a:max', 'd:max', 'a:maxdiff',
+                    'd:maxdiff', 'a:maxratio', 'd:maxratio', 'a:lnorm', 'd:lnorm' ]
+        num_items:
+          col: 3
+          values: [ 400, 450, 500, 550, 600, 650, 750, 850, 950, 1000, 1050 ]
+        num_dims:
+          col: 4
+          values: [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 ]
+        cov:
+          col: 5
+          values: [ 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 ]
+        slack:
+          col: 6
+          values: [ 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 ] 
+
+commandsets:
+    - name: default
+      paramsets:
+      commands:
+        - generate-problem -d %(num_dims)s -k %(slack)s
+        - pack-vectors -P %(pack)s -S %(select)s -I %(isort)s -B %(bsort)s      
