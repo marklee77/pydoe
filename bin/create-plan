@@ -13,7 +13,7 @@ def main(argv=None):
                            help='experiment configuration file')
 
     # FIXME: var on command line like template render?
-    argparser.add_argument('-d', '--oadir',
+    argparser.add_argument('-d', '--oadir', default='.',
                            help='directory containing orthogonal array files')
     
     args = argparser.parse_args()
@@ -42,7 +42,7 @@ def main(argv=None):
         if array.startswith('file:'): 
             arrayfile = os.path.join(oadir, array[5:])
             if not os.path.isfile(arrayfile):
-                raise SystemExit("not a valid array file: %s", arrayfile)
+                raise SystemExit("not a valid array file: %s" % (arrayfile))
             oa = [[int(x) for x in r.split()] for r in open(arrayfile, 'r')]
         elif array == 'full-factorial':
             col_idx = 0
@@ -88,10 +88,15 @@ def main(argv=None):
 
     
     for commandset in commandsets:
-        plan = [dict(row) for row in reduce(lambda x, y: [list(w)+list(v) 
-                for w in x for v in y], map(selections.get, commandset['paramsets']))]
+        #plan = [dict(list(row) + [('index', index)]) for index, row in enumerate(reduce(lambda x, y: [list(w)+list(v) for w in x for v in y], map(selections.get, commandset['paramsets'])))]
+        a = [selections[pname] for pname in commandset['paramsets']]
+        b = reduce(lambda x, y: [list(w)+list(v) for w in x for v in y], a)
+        plan = [dict(list(r) + [('index', i)]) for i, r in enumerate(b)]
 
         for row in plan:
+            row.update(config['constants'])
+            row['probfile'] = 'PROBFILE'
+            row['resultfile'] = 'RESULTFILE'
             for command in commandset['commands']:
                 print command % row
     
