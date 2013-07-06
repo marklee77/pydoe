@@ -2,7 +2,7 @@
 
 def main(argv=None):
     from argparse import ArgumentParser
-    from os.path import isfile
+    import os.path
     from itertools import chain, cycle, product 
     from sys import exit
 
@@ -12,56 +12,84 @@ def main(argv=None):
     argparser.add_argument('-c', '--config',
                            help='experiment configuration file')
 
-    argparser.add_argument('-a', '--array', action='append', default=[],
-                           help='input file containing orthogonal array')
+    # FIXME: var on command line like template render?
+    argparser.add_argument('-d', '--oadir',
+                           help='directory containing orthogonal array files')
     
-    argparser.add_argument('-s', '--seed', type=int, default=0,
-                           help='initial random seed value')
-
     args = argparser.parse_args()
 
-    if not args.config or not isfile(args.config):
+    if not args.config or not os.path.isfile(args.config):
         raise SystemExit("configuration file required to run experiment.")
     
     config = yload(open(args.config, 'r'))
 
-    oas = []
+    oadir = args.oadir
 
-    for arrayfile in args.array:
-        if not isfile(arrayfile):
-            raise SystemExit("not a valid array file: %s", arrayfile)
-
-        oas.append([[int(x) for x in r.split()] 
-                           for r in open(arrayfile, 'r')])
-
-    paramsets = config.get('params', [])
-    commands  = config.get('commands', [])
-
-    if len(paramsets) != len(oas):
-        raise SystemExit("must specify an array file for every paramset.")
+    paramsets = config.get('paramsets', [])
 
     selections = []
-    for paramset, oa in zip(paramsets, oas):
+
+    for paramset in paramsets:
+
         selection = []
-        for (param, pvalues), col in zip(paramset.iteritems(), zip(*oa)):
+        array = paramset.get('array', 'full-factorial') # full-factorial default
+        params = paramset.get('params', [])
+        num_params = len(params)
+
+        oa = []
+        if array.startswith('file:'): 
+            arrayfile = os.path.join(oadir, array[5:])
+            if not os.path.isfile(arrayfile):
+                raise SystemExit("not a valid array file: %s", arrayfile)
+            oa = [[int(x) for x in r.split()] for r in open(arrayfile, 'r')]
+        elif array == 'full-factorial':
+            col_idx = 0
+            levels = []
+            for pspec in params.values():
+                pspec['col'] = col_idx
+                levels.append(map(lambda x: [x], range(len(pspec['values']))))
+                col_idx += 1
+            oa = reduce(lambda x, y: [w+v for w in x for v in y], levels)
+        else:
+            # FIXME: add support for named arrays / mongo or other db...
+            pass
+
+        oa_trans = zip(*oa)
+        oa_cols = zip(*oa)
+        oa_avail_cols = set(range(len(oa_cols)))
+
+        for pname, pspec in params.iteritems():
+            pcolidx = pspec.get('col', -1)
+            if pcolidx < 0:
+                # FIXME: exception if out of columns?
+                pcolidx = oa_avail_cols.pop()
+            else:
+                # FIXME: exception if column not available?
+                oa_avail_cols.discard(pcolidx)
+                
+            pvalues = pspec.get('values', [])
+            pcol = oa_cols[pcolidx]
+
             num_values = len(pvalues)
-            num_symbols = len(set(col))
+            num_symbols = len(set(pcol))
+
             if num_values > num_symbols:
                 raise SystemExit("The number of parameter values exceeds the " +
                                  "number of symbols available")
-            maxval = (num_symbols / num_values) * num_values
-            cval = cycle(pvalues)
-            
-            selection.append([(param, pvalues[idx % num_values])
-                             if idx < maxval else next(cval) for idx in col])
+        
+            maxidx = (num_symbols / num_values) * num_values - 1
+            pvalcycle = cycle(pvalues)
+            selection.append([(pname, pvalues[i % num_values]) if i <= maxidx
+                             else next(pvalcycle) for i in pcol])
+ 
         selections.append(zip(*selection))
 
-    #plan = reduce(lambda x, y: [chain(*z) for z in product(x, y)], selections)
     plan = [dict(row) for row in reduce(lambda x, y: [list(w)+list(v) for w in x for v in y], selections)]
 
     for row in plan:
-        for command in commands: 
-            print command % row
+        print row
+        #for command in commands: 
+        #    print command % row
     
 
 if __name__ == "__main__":
