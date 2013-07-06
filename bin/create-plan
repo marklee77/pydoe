@@ -25,11 +25,13 @@ def main(argv=None):
 
     oadir = args.oadir
 
+    commandsets = config.get('commandsets', [])
+
     paramsets = config.get('paramsets', [])
 
-    selections = []
+    selections = {}
 
-    for paramset in paramsets:
+    for paramsetname, paramset in paramsets.iteritems():
 
         selection = []
         array = paramset.get('array', 'full-factorial') # full-factorial default
@@ -82,14 +84,16 @@ def main(argv=None):
             selection.append([(pname, pvalues[i % num_values]) if i <= maxidx
                              else next(pvalcycle) for i in pcol])
  
-        selections.append(zip(*selection))
+        selections[paramsetname] = zip(*selection)
 
-    plan = [dict(row) for row in reduce(lambda x, y: [list(w)+list(v) for w in x for v in y], selections)]
+    
+    for commandset in commandsets:
+        plan = [dict(row) for row in reduce(lambda x, y: [list(w)+list(v) 
+                for w in x for v in y], map(selections.get, commandset['paramsets']))]
 
-    for row in plan:
-        print row
-        #for command in commands: 
-        #    print command % row
+        for row in plan:
+            for command in commandset['commands']:
+                print command % row
     
 
 if __name__ == "__main__":
