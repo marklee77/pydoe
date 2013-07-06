@@ -86,17 +86,19 @@ def main(argv=None):
  
         selections[paramsetname] = zip(*selection)
 
-    
     for commandset in commandsets:
-        #plan = [dict(list(row) + [('index', index)]) for index, row in enumerate(reduce(lambda x, y: [list(w)+list(v) for w in x for v in y], map(selections.get, commandset['paramsets'])))]
-        a = [selections[pname] for pname in commandset['paramsets']]
+        cparamsets = commandset['paramsets']
+        a = [selections[pname] for pname in cparamsets]
         b = reduce(lambda x, y: [list(w)+list(v) for w in x for v in y], a)
         plan = [dict(list(r) + [('index', i)]) for i, r in enumerate(b)]
+        
+        variables = [var for var in config['variables'] 
+                     if frozenset(var['paramsets']) <= frozenset(cparamsets)]
 
         for row in plan:
             row.update(config['constants'])
-            row['probfile'] = 'PROBFILE'
-            row['resultfile'] = 'RESULTFILE'
+            for var in variables:
+                    row[var['name']] = var['value'] % row                
             for command in commandset['commands']:
                 print command % row
     
