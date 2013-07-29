@@ -99,8 +99,12 @@ def main(argv=None):
             row.update(config['constants'])
             for var in variables:
                     row[var['name']] = var['value'] % row                
+            commandinsts = set([])
             for command in commandset['commands']:
-                print command % row
+                commandinst = command % row
+                if commandinst not in commandinsts:
+                    print command % row
+                commandinsts.add(commandinst)
     
 
 if __name__ == "__main__":
