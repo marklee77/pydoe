@@ -97,6 +97,7 @@ def main(argv=None):
                      if frozenset(var['paramsets']) <= frozenset(cparamsets)]
 
         for row in plan:
+            row['index'] = row['index'] // 3630 # FIXME: hack for vpexp experiment!
             row.update(config['constants'])
             for var in variables:
                     row[var['name']] = var['value'] % row                
