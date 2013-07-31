@@ -3,28 +3,34 @@
 
 def main(argv=None):
     from argparse import ArgumentParser
-    import os.path
     from itertools import chain, cycle, product 
+    from os import path
     from sys import exit
 
     from yaml import load as yload
 
-    argparser = ArgumentParser(description='run vector packing experiment')
+    argparser = ArgumentParser(description='create experiment execution plan' +
+                                           'using orthogonal arrays')
+
+    # FIXME: var on command line like template render?
+
     argparser.add_argument('-c', '--config',
                            help='experiment configuration file')
 
-    # FIXME: var on command line like template render?
     argparser.add_argument('-d', '--oadir', default='.',
                            help='directory containing orthogonal array files')
     
     args = argparser.parse_args()
 
-    if not args.config or not os.path.isfile(args.config):
-        raise SystemExit("configuration file required to run experiment.")
+    if not args.config or not path.isfile(args.config):
+        raise SystemExit('configuration file required to run experiment.')
     
     config = yload(open(args.config, 'r'))
 
     oadir = args.oadir
+
+    if not oadir or not path.isdir(oadir):
+        raise SystemExit("invalid orthogonal array directory: %s" % (oadir))
 
     commandsets = config.get('commandsets', [])
 
@@ -35,14 +41,16 @@ def main(argv=None):
     for paramsetname, paramset in paramsets.iteritems():
 
         selection = []
-        array = paramset.get('array', 'full-factorial') # full-factorial default
+        array = paramset.get('array', 'full-factorial') # full-fact default
         params = paramset.get('params', [])
         num_params = len(params)
 
+        # FIXME: make function...
         oa = []
         if array.startswith('file:'): 
-            arrayfile = os.path.join(oadir, array[5:])
-            if not os.path.isfile(arrayfile):
+            arrayfile = path.join(oadir, array[5:])
+            # FIXME: convert to try/catch
+            if not path.isfile(arrayfile):
                 raise SystemExit("not a valid array file: %s" % (arrayfile))
             oa = [[int(x) for x in r.split()] for r in open(arrayfile, 'r')]
         elif array == 'full-factorial':
@@ -50,17 +58,19 @@ def main(argv=None):
             levels = []
             for pspec in params.values():
                 pspec['col'] = col_idx
-                levels.append(map(lambda x: [x], range(len(pspec['values']))))
                 col_idx += 1
+                levels.append([[x] for x in range(len(pspec['values']))])
+            # convert list of lists of levels to list of lists representing
+            # combindations of levels...
             oa = reduce(lambda x, y: [w+v for w in x for v in y], levels)
         else:
             # FIXME: add support for named arrays / mongo or other db...
             pass
 
-        oa_trans = zip(*oa)
         oa_cols = zip(*oa)
         oa_avail_cols = set(range(len(oa_cols)))
 
+        # FIXME: should properly handle only specifying some columns
         for pname, pspec in params.iteritems():
             pcolidx = pspec.get('col', -1)
             if pcolidx < 0:
@@ -74,18 +84,22 @@ def main(argv=None):
             pcol = oa_cols[pcolidx]
 
             num_values = len(pvalues)
-            num_symbols = len(set(pcol))
+            num_indexes = len(set(pcol))
 
-            if num_values > num_symbols:
+            if num_values > num_indexes:
                 raise SystemExit("The number of parameter values exceeds the " +
-                                 "number of symbols available")
+                                 "number of indexes available")
         
-            maxidx = (num_symbols / num_values) * num_values - 1
+            maxidx = (num_indexes / num_values) * num_values - 1
             pvalcycle = cycle(pvalues)
             selection.append([(pname, pvalues[i % num_values]) if i <= maxidx
                              else next(pvalcycle) for i in pcol])
  
         selections[paramsetname] = zip(*selection)
+
+    # FIXME: need to instantiate variables here, into list of dicts with keys
+    # 'paramsets' pointing to set and 'variables' with names and lists of
+    # values...
 
     for commandset in commandsets:
         cparamsets = commandset['paramsets']
