@@ -12,8 +12,6 @@ def main(argv=None):
     argparser = ArgumentParser(description='create experiment execution plan' +
                                            'using orthogonal arrays')
 
-    # FIXME: var on command line like template render?
-
     argparser.add_argument('-c', '--config',
                            help='experiment configuration file')
 
@@ -34,7 +32,7 @@ def main(argv=None):
 
     commandsets = config.get('commandsets', [])
 
-    paramsets = config.get('paramsets', [])
+    paramsets = config.get('parametersets', [])
 
     selections = {}
 
@@ -42,7 +40,8 @@ def main(argv=None):
 
         selection = []
         array = paramset.get('array', 'full-factorial') # full-fact default
-        params = paramset.get('params', [])
+        params = paramset.get('parameters', [])
+        variables = paramset.get('variables', [])
         num_params = len(params)
 
         # FIXME: make function...
@@ -95,32 +94,25 @@ def main(argv=None):
             selection.append([(pname, pvalues[i % num_values]) if i <= maxidx
                              else next(pvalcycle) for i in pcol])
  
-        selections[paramsetname] = zip(*selection)
+        selections[paramsetname] = [list(r) + [(var['name'], var['value'] % dict(list(r) + [('index', i)])) for var in variables] for (i, r) in enumerate(zip(*selection))]
 
-    # FIXME: need to instantiate variables here, into list of dicts with keys
-    # 'paramsets' pointing to set and 'variables' with names and lists of
-    # values...
+    print selections
+    exit(1)
 
     for commandset in commandsets:
-        cparamsets = commandset['paramsets']
+        cparamsets = commandset['parametersets']
         a = [selections[pname] for pname in cparamsets]
         b = reduce(lambda x, y: [list(w)+list(v) for w in x for v in y], a)
-        plan = [dict(list(r) + [('index', i)]) for i, r in enumerate(b)]
+        plan = [dict(list(r)) for r in b]
         
-        variables = [var for var in config['variables'] 
-                     if frozenset(var['paramsets']) <= frozenset(cparamsets)]
-
         for row in plan:
-            row['index'] = row['index'] // 3630 # FIXME: hack for vpexp experiment!
             row.update(config['constants'])
-            for var in variables:
-                    row[var['name']] = var['value'] % row                
             commandinsts = set([])
             for command in commandset['commands']:
                 commandinst = command % row
                 if commandinst not in commandinsts:
                     print command % row
-                commandinsts.add(commandinst)
+                    commandinsts.add(commandinst)
     
 
 if __name__ == "__main__":
