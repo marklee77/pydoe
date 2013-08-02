@@ -93,17 +93,12 @@ def main(argv=None):
             selection.append([(pname, pvalues[i % num_values]) if i <= maxidx
                              else next(pvalcycle) for i in pcol])
  
-        srows = [dict(r) for r in zip(*selection)]
-        for index, srow in enumerate(srows):
-            srow.update(config['constants'])
-            srow.update({ 'index' : index })
+        srows = [list(r) + [('index', i)] + config['constants'].items() 
+                 for i, r in enumerate(zip(*selection))]
+        for srow in srows:
             for var in variables:
-                srow.update({ var['name'] : var['value'] % srow})
-        #selections[paramsetname] = [list(r) + [(var['name'], var['value'] % dict(list(r) + [('index', i)])) for var in variables] for (i, r) in enumerate(zip(*selection))]
+                srow += [(var['name'], var['value'] % dict(srow))]
         selections[paramsetname] = srows
-        print selections[paramsetname]
-
-    exit(1)
 
     for commandset in commandsets:
         cparamsets = commandset['parametersets']
