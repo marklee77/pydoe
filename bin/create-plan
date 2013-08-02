@@ -32,19 +32,18 @@ def main(argv=None):
 
     commandsets = config.get('commandsets', [])
 
-    paramsets = config.get('parametersets', [])
+    parametersets = config.get('parametersets', [])
 
     selections = {}
 
-    for paramsetname, paramset in paramsets.iteritems():
+    for paramsetname, paramset in parametersets.iteritems():
 
         selection = []
         array = paramset.get('array', 'full-factorial') # full-fact default
-        params = paramset.get('parameters', [])
+        parameters = paramset.get('parameters', [])
         variables = paramset.get('variables', [])
-        num_params = len(params)
+        num_params = len(parameters)
 
-        # FIXME: make function...
         oa = []
         if array.startswith('file:'): 
             arrayfile = path.join(oadir, array[5:])
@@ -55,7 +54,7 @@ def main(argv=None):
         elif array == 'full-factorial':
             col_idx = 0
             levels = []
-            for pspec in params.values():
+            for pspec in parameters.values():
                 pspec['col'] = col_idx
                 col_idx += 1
                 levels.append([[x] for x in range(len(pspec['values']))])
@@ -67,17 +66,17 @@ def main(argv=None):
             pass
 
         oa_cols = zip(*oa)
-        oa_avail_cols = set(range(len(oa_cols)))
+        oa_avail_col_idxs = set(range(len(oa_cols)))
 
         # FIXME: should properly handle only specifying some columns
-        for pname, pspec in params.iteritems():
+        for pname, pspec in parameters.iteritems():
             pcolidx = pspec.get('col', -1)
             if pcolidx < 0:
                 # FIXME: exception if out of columns?
-                pcolidx = oa_avail_cols.pop()
+                pcolidx = oa_avail_col_idxs.pop()
             else:
                 # FIXME: exception if column not available?
-                oa_avail_cols.discard(pcolidx)
+                oa_avail_col_idxs.discard(pcolidx)
                 
             pvalues = pspec.get('values', [])
             pcol = oa_cols[pcolidx]
@@ -94,9 +93,16 @@ def main(argv=None):
             selection.append([(pname, pvalues[i % num_values]) if i <= maxidx
                              else next(pvalcycle) for i in pcol])
  
-        selections[paramsetname] = [list(r) + [(var['name'], var['value'] % dict(list(r) + [('index', i)])) for var in variables] for (i, r) in enumerate(zip(*selection))]
+        srows = [dict(r) for r in zip(*selection)]
+        for index, srow in enumerate(srows):
+            srow.update(config['constants'])
+            srow.update({ 'index' : index })
+            for var in variables:
+                srow.update({ var['name'] : var['value'] % srow})
+        #selections[paramsetname] = [list(r) + [(var['name'], var['value'] % dict(list(r) + [('index', i)])) for var in variables] for (i, r) in enumerate(zip(*selection))]
+        selections[paramsetname] = srows
+        print selections[paramsetname]
 
-    print selections
     exit(1)
 
     for commandset in commandsets:
