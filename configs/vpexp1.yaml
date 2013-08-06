@@ -3,10 +3,11 @@ constants:
     output: mongodb://central.senbazuru.soe.cranfield.ac.uk/vp2013/vpexp1
     num_bins: 512
 
-paramsets:
+parametersets:
+
     problems:
         array: file:oa.64.6.4.3.txt
-        params:
+        parameters:
             num_items:
                 values: [ 2000, 3000, 4000, 5000 ]
 
@@ -25,10 +26,16 @@ paramsets:
             split:
                 values: [ 1, 2, 4, 8 ]
 
+        variables:
+            - name: 'prefix'
+              value: prob-seed:%(index)s-num_bins:%(num_bins)s-num_items:%(num_items)s-num_dims:%(num_dims)s-cov:%(cov)s-slack:%(slack)s
+
+            - name: 'probfile'
+              value: '%(prefix)s.prob'
 
     algorithms:
         array: full-factorial
-        params:
+        parameters:
             pack:
                 values: [ 'pack_by_items', 'pack_by_bins' ]
 
@@ -48,27 +55,12 @@ paramsets:
                           'a:maxdiff', 'd:maxdiff', 'a:maxratio', 'd:maxratio', 
                           'a:lnorm', 'd:lnorm' ]
 
-variables:
-    - name: 'prefix'
-      paramsets: [ 'problems' ]
-      value: prob-seed:%(index)s-num_bins:%(num_bins)s-num_items:%(num_items)s-num_dims:%(num_dims)s-cov:%(cov)s-slack:%(slack)s
-
-    - name: 'probfile'
-      paramsets: [ 'problems' ]
-      value: '%(prefix)s.prob'
-
 commandsets:
-    - paramsets: [ 'problems' ]
+    - parametersets: [ 'problems' ]
       commands:
-        - > 
-          generate-vectorpack-problem -s %(index)s -b %(num_bins)s 
-              -i %(num_items)s -d %(num_dims)s -c %(cov)s -k %(slack)s 
-              > %(probdir)s/%(probfile)s
+        - generate-vectorpack-problem -s %(index)s -b %(num_bins)s -i %(num_items)s -d %(num_dims)s -c %(cov)s -k %(slack)s > %(probdir)s/%(probfile)s
 
-    - paramsets: [ 'problems', 'algorithms' ]
+    - parametersets: [ 'problems', 'algorithms' ]
       commands:
-        - >
-          pack-vectors -i %(probdir)s/%(probfile)s 
-              -P %(pack)s -I %(isort)s -B %(bsort)s -S %(select)s -s %(split)s 
-              -o %(output)s
+        - pack-vectors -i %(probdir)s/%(probfile)s -P %(pack)s -I %(isort)s -B %(bsort)s -S %(select)s -s %(split)s -o %(output)s
 
