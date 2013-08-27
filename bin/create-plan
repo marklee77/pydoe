@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+# FIXME: parameters specified as list-of-dicts
 
 def main(argv=None):
     from argparse import ArgumentParser
